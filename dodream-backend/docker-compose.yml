@@ -1,0 +1,29 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: dodream-postgres
+    environment:
+      POSTGRES_USER: dodream
+      POSTGRES_PASSWORD: dodream123
+      POSTGRES_DB: dodream_blog
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: dodream-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@dodream.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
