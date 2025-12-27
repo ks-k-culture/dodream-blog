@@ -1,15 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, X, Search, Loader2 } from "lucide-react";
 import { CategorySidebar } from "./category-sidebar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { api, type PostResponse } from "@/lib/api";
-import { SUB_CATEGORIES, POSTS_PER_PAGE } from "@/lib/constants";
+import { usePostFilter } from "@/hooks/use-post-filter";
 
 function formatDate(dateString: string) {
   const date = new Date(dateString);
@@ -28,68 +25,26 @@ function stripHtml(html: string) {
 }
 
 export function PostList() {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [activeSubCategory, setActiveSubCategory] = useState<string | null>(null);
-  const [activeTag, setActiveTag] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-
   const {
-    data: posts = [],
+    currentPage,
+    activeCategory,
+    activeSubCategory,
+    activeTag,
+    searchQuery,
+    posts,
+    filteredCount,
+    totalPages,
+    currentSubCategories,
     isLoading,
     error,
-  } = useQuery({
-    queryKey: ["posts"],
-    queryFn: api.posts.getAll,
-  });
-
-  const filteredPosts = posts.filter((post: PostResponse) => {
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      const matchTitle = post.title.toLowerCase().includes(query);
-      const matchExcerpt = post.excerpt.toLowerCase().includes(query);
-      const matchContent = post.content.toLowerCase().includes(query);
-      const matchTags = post.tags.some((tag) => tag.toLowerCase().includes(query));
-      const matchAuthor = post.author.toLowerCase().includes(query);
-      if (!matchTitle && !matchExcerpt && !matchContent && !matchTags && !matchAuthor) {
-        return false;
-      }
-    }
-
-    if (activeCategory && post.category !== activeCategory) return false;
-    if (activeSubCategory && post.subCategory !== activeSubCategory) return false;
-    if (activeTag && !post.tags.includes(activeTag)) return false;
-    return true;
-  });
-
-  const totalPages = Math.ceil(filteredPosts.length / POSTS_PER_PAGE);
-  const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
-  const currentPosts = filteredPosts.slice(startIndex, startIndex + POSTS_PER_PAGE);
-
-  const handleCategoryChange = (category: string | null) => {
-    setActiveCategory(category);
-    setActiveSubCategory(null);
-    setActiveTag(null);
-    setCurrentPage(1);
-  };
-
-  const handleSubCategoryChange = (subCategory: string | null) => {
-    setActiveSubCategory(subCategory);
-    setActiveTag(null);
-    setCurrentPage(1);
-  };
-
-  const handleTagClick = (tag: string) => {
-    setActiveTag(activeTag === tag ? null : tag);
-    setCurrentPage(1);
-  };
-
-  const clearTagFilter = () => {
-    setActiveTag(null);
-    setCurrentPage(1);
-  };
-
-  const currentSubCategories = activeCategory ? SUB_CATEGORIES[activeCategory] || [] : [];
+    setCurrentPage,
+    handleCategoryChange,
+    handleSubCategoryChange,
+    handleTagClick,
+    handleSearchChange,
+    clearTagFilter,
+    clearSearch,
+  } = usePostFilter();
 
   if (isLoading) {
     return (
@@ -116,15 +71,12 @@ export function PostList() {
             type="text"
             placeholder="제목, 내용, 태그로 검색..."
             value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setCurrentPage(1);
-            }}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-10"
           />
           {searchQuery && (
             <button
-              onClick={() => setSearchQuery("")}
+              onClick={clearSearch}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
               <X className="h-4 w-4" />
@@ -177,7 +129,7 @@ export function PostList() {
           <div className="mb-6 flex items-center gap-3 flex-wrap">
             {searchQuery && (
               <span className="text-sm text-muted-foreground">
-                &quot;{searchQuery}&quot; 검색 결과: {filteredPosts.length}개
+                &quot;{searchQuery}&quot; 검색 결과: {filteredCount}개
               </span>
             )}
             {activeTag && (
@@ -190,7 +142,7 @@ export function PostList() {
         )}
 
         <div className="divide-y divide-border">
-          {currentPosts.map((post) => (
+          {posts.map((post) => (
             <article key={post.slug} className="py-8 first:pt-0">
               <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
                 <time>{formatDate(post.createdAt)}</time>
@@ -223,9 +175,7 @@ export function PostList() {
           ))}
         </div>
 
-        {filteredPosts.length === 0 && (
-          <p className="py-12 text-center text-muted-foreground">해당하는 글이 없습니다.</p>
-        )}
+        {posts.length === 0 && <p className="py-12 text-center text-muted-foreground">해당하는 글이 없습니다.</p>}
 
         {totalPages > 1 && (
           <nav className="mt-12 flex items-center justify-center gap-2">
