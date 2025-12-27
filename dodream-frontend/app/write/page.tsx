@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -210,7 +210,7 @@ function WriteForm({ editPost, existingTags, defaultAuthor }: WriteFormProps) {
   );
 }
 
-export default function WritePage() {
+function WritePageContent() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -260,5 +260,19 @@ export default function WritePage() {
         />
       </main>
     </div>
+  );
+}
+
+export default function WritePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <p className="text-muted-foreground">로딩 중...</p>
+        </div>
+      }
+    >
+      <WritePageContent />
+    </Suspense>
   );
 }
