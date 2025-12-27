@@ -1,4 +1,6 @@
 import { StarterKit } from "novel";
+import Link from "@tiptap/extension-link";
+import Image from "@tiptap/extension-image";
 import {
   Heading1,
   Heading2,
@@ -7,6 +9,8 @@ import {
   ListOrdered,
   Quote,
   CodeSquare,
+  ImageIcon,
+  Link as LinkIcon,
   type LucideIcon,
 } from "lucide-react";
 
@@ -25,6 +29,8 @@ export const suggestionItems: SuggestionItem[] = [
   { title: "번호 매기기", description: "번호 리스트", icon: ListOrdered, command: "orderedList" },
   { title: "인용문", description: "인용 블록", icon: Quote, command: "blockquote" },
   { title: "코드 블록", description: "코드 작성", icon: CodeSquare, command: "codeBlock" },
+  { title: "이미지", description: "이미지 삽입", icon: ImageIcon, command: "image" },
+  { title: "링크", description: "링크 삽입", icon: LinkIcon, command: "link" },
 ];
 
 export const editorExtensions = [
@@ -40,6 +46,17 @@ export const editorExtensions = [
     },
     heading: {
       levels: [1, 2, 3],
+    },
+  }),
+  Link.configure({
+    openOnClick: false,
+    HTMLAttributes: {
+      class: "text-primary underline underline-offset-4 hover:text-primary/80 cursor-pointer",
+    },
+  }),
+  Image.configure({
+    HTMLAttributes: {
+      class: "rounded-lg max-w-full h-auto my-4",
     },
   }),
 ];

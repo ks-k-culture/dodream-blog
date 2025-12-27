@@ -12,7 +12,7 @@ import {
   EditorBubbleItem,
 } from "novel";
 import type { Editor } from "@tiptap/core";
-import { Bold, Italic, Strikethrough, Code } from "lucide-react";
+import { Bold, Italic, Strikethrough, Code, Link as LinkIcon } from "lucide-react";
 import { suggestionItems, editorExtensions, editorStyles } from "@/lib/editor-config";
 
 interface NovelEditorProps {
@@ -42,6 +42,7 @@ export function NovelEditor({ initialContent, onChange }: NovelEditorProps) {
           }}
           onUpdate={({ editor }) => {
             const html = editor.getHTML();
+            console.log(html);
             onChange?.(html);
           }}
           editorProps={{
@@ -79,6 +80,18 @@ export function NovelEditor({ initialContent, onChange }: NovelEditorProps) {
                         break;
                       case "codeBlock":
                         editor.chain().focus().deleteRange(range).toggleCodeBlock().run();
+                        break;
+                      case "image":
+                        const imageUrl = window.prompt("이미지 URL을 입력하세요:");
+                        if (imageUrl) {
+                          editor.chain().focus().deleteRange(range).setImage({ src: imageUrl }).run();
+                        }
+                        break;
+                      case "link":
+                        const linkUrl = window.prompt("링크 URL을 입력하세요:");
+                        if (linkUrl) {
+                          editor.chain().focus().deleteRange(range).setLink({ href: linkUrl }).run();
+                        }
                         break;
                     }
                   }}
@@ -118,6 +131,17 @@ export function NovelEditor({ initialContent, onChange }: NovelEditorProps) {
               className="p-2 hover:bg-accent"
             >
               <Code className="h-4 w-4" />
+            </EditorBubbleItem>
+            <EditorBubbleItem
+              onSelect={(editor) => {
+                const url = window.prompt("링크 URL을 입력하세요:");
+                if (url) {
+                  editor.chain().focus().setLink({ href: url }).run();
+                }
+              }}
+              className="p-2 hover:bg-accent"
+            >
+              <LinkIcon className="h-4 w-4" />
             </EditorBubbleItem>
           </EditorBubble>
         </EditorContent>
