@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import {
   EditorRoot,
   EditorContent,
@@ -12,7 +12,7 @@ import {
   EditorBubbleItem,
 } from "novel";
 import type { Editor } from "@tiptap/core";
-import { Bold, Italic, Strikethrough, Code, Link as LinkIcon } from "lucide-react";
+import { Bold, Italic, Strikethrough, Code, Link as LinkIcon, ImageIcon, Loader2 } from "lucide-react";
 import { suggestionItems, editorExtensions, editorStyles } from "@/lib/editor-config";
 
 interface NovelEditorProps {
@@ -20,19 +20,97 @@ interface NovelEditorProps {
   onChange?: (content: string) => void;
 }
 
+async function uploadImage(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch("/api/upload", {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "업로드 실패");
+  }
+
+  const data = await response.json();
+  return data.url;
+}
+
 export function NovelEditor({ initialContent, onChange }: NovelEditorProps) {
   const editorRef = useRef<Editor | null>(null);
   const hasSetInitialContent = useRef(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editorRef.current) return;
+
+    try {
+      setIsUploading(true);
+      const url = await uploadImage(file);
+      editorRef.current.chain().focus().setImage({ src: url }).run();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "이미지 업로드에 실패했습니다");
+    } finally {
+      setIsUploading(false);
+      // input 초기화 (같은 파일 다시 선택 가능하게)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const triggerFileUpload = () => {
+    fileInputRef.current?.click();
+  };
 
   return (
     <div className="relative min-h-[500px] w-full border border-border rounded-lg bg-card overflow-hidden">
       <style jsx global>
         {editorStyles}
       </style>
+
+      {/* 이미지 업로드 툴바 */}
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-muted/30">
+        <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+        <button
+          type="button"
+          onClick={triggerFileUpload}
+          disabled={isUploading}
+          className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-md hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isUploading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>업로드 중...</span>
+            </>
+          ) : (
+            <>
+              <ImageIcon className="h-4 w-4" />
+              <span>이미지 업로드</span>
+            </>
+          )}
+        </button>
+        <span className="text-xs text-muted-foreground">또는 /이미지 명령어 사용</span>
+      </div>
+
+      {/* 업로드 중 오버레이 */}
+      {isUploading && (
+        <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-50">
+          <div className="flex items-center gap-2 px-4 py-2 bg-popover rounded-md shadow-lg border border-border">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span>이미지 업로드 중...</span>
+          </div>
+        </div>
+      )}
+
       <EditorRoot>
         <EditorContent
           extensions={editorExtensions}
-          className="novel-editor p-4 min-h-[500px]"
+          className="novel-editor p-4 min-h-[450px]"
           onCreate={({ editor }) => {
             editorRef.current = editor;
             if (initialContent && !hasSetInitialContent.current) {
@@ -47,7 +125,7 @@ export function NovelEditor({ initialContent, onChange }: NovelEditorProps) {
           }}
           editorProps={{
             attributes: {
-              class: "focus:outline-none min-h-[500px]",
+              class: "focus:outline-none min-h-[450px]",
             },
           }}
         >
@@ -82,10 +160,9 @@ export function NovelEditor({ initialContent, onChange }: NovelEditorProps) {
                         editor.chain().focus().deleteRange(range).toggleCodeBlock().run();
                         break;
                       case "image":
-                        const imageUrl = window.prompt("이미지 URL을 입력하세요:");
-                        if (imageUrl) {
-                          editor.chain().focus().deleteRange(range).setImage({ src: imageUrl }).run();
-                        }
+                        // 슬래시 명령어에서도 파일 업로드 다이얼로그 열기
+                        editor.chain().focus().deleteRange(range).run();
+                        triggerFileUpload();
                         break;
                       case "link":
                         const linkUrl = window.prompt("링크 URL을 입력하세요:");
@@ -142,6 +219,9 @@ export function NovelEditor({ initialContent, onChange }: NovelEditorProps) {
               className="p-2 hover:bg-accent"
             >
               <LinkIcon className="h-4 w-4" />
+            </EditorBubbleItem>
+            <EditorBubbleItem onSelect={() => triggerFileUpload()} className="p-2 hover:bg-accent">
+              <ImageIcon className="h-4 w-4" />
             </EditorBubbleItem>
           </EditorBubble>
         </EditorContent>
